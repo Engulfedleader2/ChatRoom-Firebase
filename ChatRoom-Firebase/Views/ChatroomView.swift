@@ -6,13 +6,28 @@
 //
 
 import SwiftUI
+import FirebaseDatabase
 
 struct ChatroomView: View {
+    
+    @StateObject private var viewModel: ChatroomViewModel
+    @State private var messageText: String = ""
+    
+    init(chatroomID: String) {
+        _viewModel = StateObject(wrappedValue: ChatroomViewModel(chatroomID: chatroomID))
+    }
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack{
+            //This will show who is in the room
+            HStack{
+                Image(systemName: "person.fill")
+                //Text("\(viewModel.users)")
+            }
+        }
     }
 }
 
-#Preview {
-    ChatroomView()
+Preview{
+    ChatroomView(chatroomID: ".")
 }
