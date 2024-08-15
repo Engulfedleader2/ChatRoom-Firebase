@@ -15,7 +15,7 @@ struct ChatRoom_FirebaseApp: App {
     }
     var body: some Scene {
         WindowGroup {
-            LoginView()
+            ChatroomMainView()
         }
     }
 }

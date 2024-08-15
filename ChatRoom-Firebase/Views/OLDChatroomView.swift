@@ -107,7 +107,6 @@ struct OLDChatroomView: View {
             }
         }
     }
-
     
     private func sendMessage() {
         guard !message.isEmpty else { return }

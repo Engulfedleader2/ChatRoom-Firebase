@@ -72,7 +72,7 @@ struct LoginView: View {
                 .padding(.bottom, 40)
             }
             .navigationDestination(isPresented: $isLoggedIn) {
-                OLDChatroomView()
+                ChatroomMainView()
             }
             .navigationBarHidden(true)
             .alert(isPresented: Binding<Bool>(

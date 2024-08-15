@@ -28,6 +28,11 @@ struct ChatroomView: View {
     }
 }
 
-Preview{
-    ChatroomView(chatroomID: ".")
+
+struct ChatroomView_Previews_Alternative: PreviewProvider {
+    static var previews: some View {
+        ChatroomView(chatroomID: "exampleChatroomID")
+            .previewDevice("iPhone 14")
+    }
 }
+
