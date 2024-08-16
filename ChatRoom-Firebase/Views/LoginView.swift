@@ -7,13 +7,14 @@
 
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
 
 struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isLoggingIn = false
     @State private var loginError: String?
-    @State private var isLoggedIn = false // State variable to track login status
+    @State private var isLoggedIn = false
     
     var body: some View {
         NavigationStack {
@@ -21,7 +22,7 @@ struct LoginView: View {
                 Spacer()
                 
                 // App Logo or Title
-                Text("Chatroom app")
+                Text("Chatroom App")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.bottom, 40)
@@ -34,6 +35,7 @@ struct LoginView: View {
                     .padding(.bottom, 20)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
+                    .keyboardType(.emailAddress)
                 
                 // Password Field
                 SecureField("Password", text: $password)
@@ -45,19 +47,28 @@ struct LoginView: View {
                 // Login Button
                 Button(action: {
                     isLoggingIn = true
+                    dismissKeyboard() // Dismiss keyboard
                     signIn()
                 }) {
-                    Text("Login")
-                        .foregroundColor(.white)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(10)
+                    if isLoggingIn {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    } else {
+                        Text("Login")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
                 }
                 .padding(.bottom, 20)
-                .disabled(email.isEmpty || password.isEmpty)
-                .opacity(email.isEmpty || password.isEmpty ? 0.5 : 1.0)
+                .disabled(email.isEmpty || password.isEmpty || isLoggingIn)
+                .opacity(email.isEmpty || password.isEmpty || isLoggingIn ? 0.5 : 1.0)
                 
                 Spacer()
                 
@@ -72,7 +83,7 @@ struct LoginView: View {
                 .padding(.bottom, 40)
             }
             .navigationDestination(isPresented: $isLoggedIn) {
-                ChatroomMainView()
+                ChatroomListView()
             }
             .navigationBarHidden(true)
             .alert(isPresented: Binding<Bool>(
@@ -87,14 +98,58 @@ struct LoginView: View {
     func signIn() {
         Auth.auth().signIn(withEmail: email, password: password) { authResult, error in
             isLoggingIn = false
-            if let error = error {
-                self.loginError = error.localizedDescription
-                print("Login failed: \(error.localizedDescription)")
+            if let error = error as NSError? {
+                switch AuthErrorCode(rawValue: error.code) {
+                case .invalidEmail:
+                    loginError = "Invalid email address."
+                case .wrongPassword:
+                    loginError = "Incorrect password."
+                case .userNotFound:
+                    loginError = "No user found with this email."
+                case .networkError:
+                    loginError = "Network error. Please try again."
+                default:
+                    loginError = error.localizedDescription
+                }
+                print("Login failed: \(loginError ?? "")")
             } else {
                 print("User signed in successfully")
-                isLoggedIn = true // Navigate to ChatroomView
+                if let user = Auth.auth().currentUser {
+                    // Check if display name is set
+                    if user.displayName == nil {
+                        // Retrieve username from Firestore
+                        let db = Firestore.firestore()
+                        db.collection("users").document(user.uid).getDocument { document, error in
+                            if let error = error {
+                                print("Error retrieving user data: \(error)")
+                                self.loginError = "Error retrieving user data."
+                            } else if let document = document, document.exists {
+                                if let username = document.data()?["username"] as? String {
+                                    // Set the display name to the retrieved username
+                                    let changeRequest = user.createProfileChangeRequest()
+                                    changeRequest.displayName = username
+                                    changeRequest.commitChanges { error in
+                                        if let error = error {
+                                            print("Error setting display name: \(error)")
+                                        } else {
+                                            print("Display name set successfully to \(username)")
+                                        }
+                                    }
+                                }
+                            }
+                            isLoggedIn = true
+                        }
+                    } else {
+                        isLoggedIn = true
+                    }
+                }
             }
         }
+    }
+
+    
+    func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

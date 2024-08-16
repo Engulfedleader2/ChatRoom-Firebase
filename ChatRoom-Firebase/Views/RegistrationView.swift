@@ -16,7 +16,7 @@ struct RegistrationView: View {
     @State private var username = ""
     @State private var errorMessage = ""
     @State private var showingAlert = false
-    @State private var showingConfirmation = false // State to show confirmation alert
+    @State private var showingConfirmation = false
     @State private var isRegistered = false
     
     var body: some View {
@@ -44,16 +44,16 @@ struct RegistrationView: View {
                     Text("Register")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(email.isEmpty || password.isEmpty || username.isEmpty ? Color.gray : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                         .padding(.horizontal)
                 }
+                .disabled(email.isEmpty || password.isEmpty || username.isEmpty)
                 
                 Spacer()
                 
-                // NavigationLink to navigate to ChatroomView after registration
-                NavigationLink("", destination: OLDChatroomView(), isActive: $isRegistered)
+                NavigationLink("", destination: ChatroomListView(), isActive: $isRegistered)
                     .hidden()
             }
             .navigationTitle("Sign Up")
@@ -98,23 +98,31 @@ struct RegistrationView: View {
     }
     
     private func saveUserProfile(user: FirebaseAuth.User) {
-        let db = Firestore.firestore()
-        db.collection("users").document(user.uid).setData([
-            "username": username,
-            "email": email,
-            "isOnline": true // Set user as online by default
-        ]) { error in
+        let changeRequest = user.createProfileChangeRequest()
+        changeRequest.displayName = username // Set the display name to the entered username
+        changeRequest.commitChanges { error in
             if let error = error {
                 self.errorMessage = error.localizedDescription
                 self.showingAlert = true
                 return
             }
             
-            print("User registered successfully!")
-            self.isRegistered = true // Trigger navigation to ChatroomView
+            let db = Firestore.firestore()
+            db.collection("users").document(user.uid).setData([
+                "username": username,
+                "email": email,
+            ]) { error in
+                if let error = error {
+                    self.errorMessage = error.localizedDescription
+                    self.showingAlert = true
+                    return
+                }
+
+                print("User registered successfully with display name!")
+                self.showingConfirmation = true
+            }
         }
     }
-
 }
 
 struct RegistrationView_Previews: PreviewProvider {
