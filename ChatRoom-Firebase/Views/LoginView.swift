@@ -22,7 +22,7 @@ struct LoginView: View {
                 Spacer()
                 
                 // App Logo or Title
-                Text("Chatroom App")
+                Image("ChatroomLogo")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.bottom, 40)
