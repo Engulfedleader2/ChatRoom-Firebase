@@ -36,7 +36,7 @@ class ChatroomViewModel: ObservableObject {
             
             // Map the Firestore data to Message structs
             self.messages = data.keys.compactMap { key in
-                if let messageData = data[key] as? [String: Any] {
+                if key.starts(with: "message_"), let messageData = data[key] as? [String: Any] {
                     let id = key
                     let message = messageData["message"] as? String ?? "No message"
                     let username = messageData["username"] as? String ?? "Unknown"
@@ -47,16 +47,16 @@ class ChatroomViewModel: ObservableObject {
             }.sorted(by: { $0.timestamp < $1.timestamp })
         }
     }
-    
+
     func sendMessage() {
         guard !newMessage.trimmingCharacters(in: .whitespaces).isEmpty else {
             print("Cannot send an empty message")
             return
         }
         
-        let messageID = UUID().uuidString
         let timestamp = Timestamp(date: Date())
-        
+        let messageID = "message_\(timestamp.seconds)"  // This maps the message field based on timestamp
+
         // Fetch username from Firestore
         if let user = Auth.auth().currentUser {
             let userDoc = db.collection("users").document(user.uid)
@@ -68,12 +68,14 @@ class ChatroomViewModel: ObservableObject {
                 
                 let username = document?.data()?["username"] as? String ?? "Unknown"
                 
+                // Message data with field mapping
                 let messageData: [String: Any] = [
                     "message": self.newMessage,
                     "username": username,
                     "timestamp": timestamp
                 ]
                 
+                // Using the messageID as the key, similar to your web implementation
                 self.db.collection("chatrooms").document(self.chatroomID).updateData([messageID: messageData]) { error in
                     if let error = error {
                         print("Error sending message: \(error)")
@@ -85,5 +87,6 @@ class ChatroomViewModel: ObservableObject {
             }
         }
     }
+
 
 }

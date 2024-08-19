@@ -32,16 +32,14 @@ struct ChatroomListView: View {
                 }
             }
             .navigationTitle("Chatrooms")
-            .onAppear {
-                if viewModel.chatrooms.isEmpty {
-                    viewModel.errorMessage = "No chatrooms available."
-                }
-            }
-            .alert(isPresented: Binding<Bool>(
-                get: { viewModel.errorMessage != nil },
-                set: { if !$0 { viewModel.errorMessage = nil } }
-            )) {
-                Alert(title: Text("Error"), message: Text(viewModel.errorMessage ?? ""), dismissButton: .default(Text("OK")))
+            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+                Alert(
+                    title: Text("Error"),
+                    message: Text(viewModel.errorMessage ?? ""),
+                    dismissButton: .default(Text("OK")) {
+                        viewModel.errorMessage = nil
+                    }
+                )
             }
         }
     }
@@ -52,3 +50,4 @@ struct ChatroomListView_Previews: PreviewProvider {
         ChatroomListView()
     }
 }
+'

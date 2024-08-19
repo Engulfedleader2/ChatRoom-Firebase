@@ -21,7 +21,7 @@ class ChatroomListViewModel: ObservableObject {
     func fetchChatrooms() {
         db.collection("chatrooms").addSnapshotListener { snapshot, error in
             if let error = error {
-                print("Error fetching chatrooms: \(error)")
+                print("Error fetching chatrooms: \(error.localizedDescription)")
                 self.errorMessage = "Failed to fetch chatrooms."
                 return
             }
@@ -38,22 +38,39 @@ class ChatroomListViewModel: ObservableObject {
                 let data = doc.data()
                 print("Fetched document data: \(data)") // Debug statement
                 
+                let name = data["name"] as? String ?? doc.documentID
+                
                 let lastMessage: String
                 let timestamp: Date
                 
-                if let lastMessageData = data["messages"] as? [String: Any],
-                   let lastMessageKey = lastMessageData.keys.sorted().last,
-                   let messageData = lastMessageData[lastMessageKey] as? [String: Any] {
-                    lastMessage = messageData["message"] as? String ?? "No recent messages"
-                    timestamp = (messageData["timestamp"] as? Timestamp)?.dateValue() ?? Date()
+                if let messages = data["messages"] as? [[String: Any]] {
+                    print("Messages array: \(messages)") // Debug statement
+                    
+                    let sortedMessages = messages.sorted {
+                        let firstTimestamp = ($0["timestamp"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        let secondTimestamp = ($1["timestamp"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        return firstTimestamp < secondTimestamp
+                    }
+                    
+                    if let latestMessage = sortedMessages.last {
+                        print("Latest message: \(latestMessage)") // Debug statement
+                        
+                        lastMessage = latestMessage["message"] as? String ?? "No recent messages"
+                        timestamp = (latestMessage["timestamp"] as? Timestamp)?.dateValue() ?? Date()
+                    } else {
+                        lastMessage = "No recent messages"
+                        timestamp = Date()
+                    }
                 } else {
+                    print("No messages array found in data.") // Debug statement
                     lastMessage = "No recent messages"
                     timestamp = Date()
                 }
                 
-                fetchedChatrooms.append(Chatroom(id: doc.documentID, name: doc.documentID, lastMessage: lastMessage, timestamp: timestamp))
+                fetchedChatrooms.append(Chatroom(id: doc.documentID, name: name, lastMessage: lastMessage, timestamp: timestamp))
             }
             
+            // Sort by the most recent timestamp
             self.chatrooms = fetchedChatrooms.sorted(by: { $0.timestamp > $1.timestamp })
         }
     }

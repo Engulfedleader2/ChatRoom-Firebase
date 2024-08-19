@@ -25,11 +25,22 @@ struct ChatroomView: View {
                                 Text("\(message.username):")
                                     .font(.footnote)
                                     .foregroundColor(.gray)
+                                
                                 Text(message.message)
                                     .padding(.vertical, 4)
+                                
                                 Divider()
                             }
                             .padding(.horizontal)
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    // Toggle or show the timestamp
+                                    print("Timestamp: \(message.timestamp)")
+                                } label: {
+                                    Text(message.timestamp, style: .time)  // Display the time
+                                }
+                                .tint(.blue)
+                            }
                         }
                     }
                     .onChange(of: viewModel.messages) { _ in
