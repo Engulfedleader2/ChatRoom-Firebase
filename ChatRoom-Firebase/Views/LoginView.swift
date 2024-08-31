@@ -22,27 +22,42 @@ struct LoginView: View {
                 Spacer()
                 
                 // App Logo or Title
-                Image("ChatroomLogo")
+                Text("Chatroom")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .foregroundColor(.primary)  // Automatically adjusts for dark mode
                     .padding(.bottom, 40)
                 
                 // Email Field
-                TextField("Email Address", text: $email)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                    .padding(.bottom, 20)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
-                    .keyboardType(.emailAddress)
+                HStack {
+                    Image(systemName: "envelope")
+                        .foregroundColor(.gray)
+                    TextField("Email Address", text: $email)
+                        .padding()
+                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemBackground).opacity(0.2)))  // Adjust background for dark mode
+                .shadow(radius: 2)
+                .padding(.bottom, 20)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .keyboardType(.emailAddress)
                 
                 // Password Field
-                SecureField("Password", text: $password)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                    .padding(.bottom, 20)
+                HStack {
+                    Image(systemName: "lock")
+                        .foregroundColor(.gray)
+                    SecureField("Password", text: $password)
+                        .padding()
+                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemBackground).opacity(0.2)))  // Adjust background for dark mode
+                .shadow(radius: 2)
+                .padding(.bottom, 20)
                 
                 // Login Button
                 Button(action: {
@@ -75,6 +90,7 @@ struct LoginView: View {
                 // Sign-up Link
                 HStack {
                     Text("Don't have an account?")
+                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
                     NavigationLink(destination: RegistrationView()) {
                         Text("Sign up")
                             .foregroundColor(.blue)
@@ -82,6 +98,10 @@ struct LoginView: View {
                 }
                 .padding(.bottom, 40)
             }
+            .background(
+                LinearGradient(gradient: Gradient(colors: [Color(red: 0.9, green: 0.9, blue: 1.0), Color(red: 0.8, green: 0.9, blue: 1.0)]), startPoint: .top, endPoint: .bottom)
+                    .edgesIgnoringSafeArea(.all)
+            )
             .navigationDestination(isPresented: $isLoggedIn) {
                 ChatroomListView()
             }
@@ -146,7 +166,6 @@ struct LoginView: View {
             }
         }
     }
-
     
     func dismissKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -156,5 +175,6 @@ struct LoginView: View {
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
         LoginView()
+            .preferredColorScheme(.dark)  // Preview in dark mode
     }
 }

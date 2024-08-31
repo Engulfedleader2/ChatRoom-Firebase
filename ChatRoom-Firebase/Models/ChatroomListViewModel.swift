@@ -36,43 +36,20 @@ class ChatroomListViewModel: ObservableObject {
             
             for doc in documents {
                 let data = doc.data()
-                print("Fetched document data: \(data)") // Debug statement
+                print("Fetched document ID: \(doc.documentID), data: \(data)") // Debug statement
                 
-                let name = data["name"] as? String ?? doc.documentID
-                
-                let lastMessage: String
-                let timestamp: Date
-                
-                if let messages = data["messages"] as? [[String: Any]] {
-                    print("Messages array: \(messages)") // Debug statement
-                    
-                    let sortedMessages = messages.sorted {
-                        let firstTimestamp = ($0["timestamp"] as? Timestamp)?.dateValue() ?? Date.distantPast
-                        let secondTimestamp = ($1["timestamp"] as? Timestamp)?.dateValue() ?? Date.distantPast
-                        return firstTimestamp < secondTimestamp
-                    }
-                    
-                    if let latestMessage = sortedMessages.last {
-                        print("Latest message: \(latestMessage)") // Debug statement
-                        
-                        lastMessage = latestMessage["message"] as? String ?? "No recent messages"
-                        timestamp = (latestMessage["timestamp"] as? Timestamp)?.dateValue() ?? Date()
-                    } else {
-                        lastMessage = "No recent messages"
-                        timestamp = Date()
-                    }
-                } else {
-                    print("No messages array found in data.") // Debug statement
-                    lastMessage = "No recent messages"
-                    timestamp = Date()
-                }
-                
-                fetchedChatrooms.append(Chatroom(id: doc.documentID, name: name, lastMessage: lastMessage, timestamp: timestamp))
+                // Use the document ID as the chatroom name
+                let chatroom = Chatroom(id: doc.documentID, data: data)
+                fetchedChatrooms.append(chatroom)
             }
             
             // Sort by the most recent timestamp
             self.chatrooms = fetchedChatrooms.sorted(by: { $0.timestamp > $1.timestamp })
+            
+            // Debug output to ensure the chatrooms are sorted correctly
+            for chatroom in self.chatrooms {
+                print("Chatroom: \(chatroom.name), Last Message: \(chatroom.lastMessage), Timestamp: \(chatroom.timestamp)")
+            }
         }
     }
-
 }

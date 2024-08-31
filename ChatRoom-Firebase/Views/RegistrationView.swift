@@ -22,22 +22,59 @@ struct RegistrationView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
+                Spacer()
+                
+                // App Logo or Title
+                Text("Create an Account")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .padding(.bottom, 40)
+                
                 // Username Field
-                TextField("Username", text: $username)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
+                HStack {
+                    Image(systemName: "person")
+                        .foregroundColor(.gray)
+                    TextField("Username", text: $username)
+                        .padding()
+                        .foregroundColor(.primary)
+                        .autocapitalization(.none)
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                .shadow(radius: 2)
+                .padding(.horizontal)
                 
                 // Email Field
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
+                HStack {
+                    Image(systemName: "envelope")
+                        .foregroundColor(.gray)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .padding()
+                        .foregroundColor(.primary)
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                .shadow(radius: 2)
+                .padding(.horizontal)
                 
                 // Password Field
-                SecureField("Password", text: $password)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(.horizontal)
+                HStack {
+                    Image(systemName: "lock")
+                        .foregroundColor(.gray)
+                    SecureField("Password", text: $password)
+                        .padding()
+                        .foregroundColor(.primary)
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                .shadow(radius: 2)
+                .padding(.horizontal)
                 
                 // Register Button
                 Button(action: register) {
@@ -56,7 +93,12 @@ struct RegistrationView: View {
                 NavigationLink("", destination: ChatroomListView(), isActive: $isRegistered)
                     .hidden()
             }
+            .background(
+                LinearGradient(gradient: Gradient(colors: [Color(red: 0.9, green: 0.9, blue: 1.0), Color(red: 0.8, green: 0.9, blue: 1.0)]), startPoint: .top, endPoint: .bottom)
+                    .edgesIgnoringSafeArea(.all)
+            )
             .navigationTitle("Sign Up")
+            .navigationBarTitleDisplayMode(.inline)
             .alert(isPresented: $showingAlert) {
                 Alert(title: Text("Registration Error"), message: Text(errorMessage), dismissButton: .default(Text("OK")))
             }
@@ -128,5 +170,6 @@ struct RegistrationView: View {
 struct RegistrationView_Previews: PreviewProvider {
     static var previews: some View {
         RegistrationView()
+            .preferredColorScheme(.light)  // Preview in light mode
     }
 }
