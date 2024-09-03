@@ -21,17 +21,17 @@ struct ChatroomView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(viewModel.messages) { message in
-                            HStack {
-                                // Show the clock icon only when the timestamp is visible
+                            HStack(alignment: .top) {
+                                // Fixed space for the clock icon, ensure it doesn't affect layout when hidden
                                 if showTimestampForMessageID == message.id {
                                     Image(systemName: "clock")
                                         .foregroundColor(.blue)
                                         .transition(.move(edge: .leading))
                                         .animation(.easeInOut, value: showTimestampForMessageID)
+                                        .padding(.trailing, 5) // Add a small padding between the icon and the message
                                 }
-                                
+
                                 VStack(alignment: .leading, spacing: 5) {
-                                    // Display the message content
                                     Text("\(message.username):")
                                         .font(.footnote)
                                         .foregroundColor(.gray)
@@ -64,7 +64,10 @@ struct ChatroomView: View {
                                             }
                                         }
                                 )
+                                
+                                Spacer() // Ensure the layout takes up the remaining space
                             }
+                            .padding(.horizontal) // Add padding to the HStack for overall layout consistency
                         }
                     }
                     .onChange(of: viewModel.messages) { _ in
@@ -105,7 +108,6 @@ struct ChatroomView: View {
         }
         .navigationTitle("Chatroom")
         .navigationBarTitleDisplayMode(.inline)
-        // Removed the code that hides the back button
     }
     
     // Date formatter for displaying date and time

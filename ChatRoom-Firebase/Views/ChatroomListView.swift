@@ -65,7 +65,7 @@ struct ChatroomListView: View {
                     }
                 }
             }
-            .navigationBarBackButtonHidden(true) //hides the back button
+           
             .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
                 Alert(
                     title: Text("Error"),
@@ -76,6 +76,7 @@ struct ChatroomListView: View {
                 )
             }
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 
