@@ -8,16 +8,19 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 
 struct RegistrationView: View {
     
     @State private var email = ""
     @State private var password = ""
     @State private var username = ""
+    @State private var profileImage: UIImage? = nil  // Store selected profile image
     @State private var errorMessage = ""
     @State private var showingAlert = false
     @State private var showingConfirmation = false
     @State private var isRegistered = false
+    @State private var isShowingImagePicker = false
     
     var body: some View {
         NavigationStack {
@@ -28,8 +31,30 @@ struct RegistrationView: View {
                 Text("Create an Account")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
                     .padding(.bottom, 40)
+                
+                // Profile Picture Picker
+                Button(action: {
+                    isShowingImagePicker = true
+                }) {
+                    if let profileImage = profileImage {
+                        Image(uiImage: profileImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                    } else {
+                        Image(systemName: "person.crop.circle")
+                            .resizable()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding(.bottom, 20)
+                .sheet(isPresented: $isShowingImagePicker) {
+                    ImagePicker(image: $profileImage)
+                }
                 
                 // Username Field
                 HStack {
@@ -37,12 +62,12 @@ struct RegistrationView: View {
                         .foregroundColor(.gray)
                     TextField("Username", text: $username)
                         .padding()
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                         .autocapitalization(.none)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                    .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
                 .padding(.horizontal)
                 
@@ -54,11 +79,11 @@ struct RegistrationView: View {
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .padding()
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                    .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
                 .padding(.horizontal)
                 
@@ -68,11 +93,11 @@ struct RegistrationView: View {
                         .foregroundColor(.gray)
                     SecureField("Password", text: $password)
                         .padding()
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
+                    .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
                 .padding(.horizontal)
                 
@@ -81,7 +106,7 @@ struct RegistrationView: View {
                     Text("Register")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(email.isEmpty || password.isEmpty || username.isEmpty ? Color.gray : Color.blue)
+                        .background(email.isEmpty || password.isEmpty || username.isEmpty ? Color.gray : Color(red: 0.2, green: 0.2, blue: 0.35))
                         .foregroundColor(.white)
                         .cornerRadius(10)
                         .padding(.horizontal)
@@ -94,7 +119,7 @@ struct RegistrationView: View {
                     .hidden()
             }
             .background(
-                LinearGradient(gradient: Gradient(colors: [Color(red: 0.9, green: 0.9, blue: 1.0), Color(red: 0.8, green: 0.9, blue: 1.0)]), startPoint: .top, endPoint: .bottom)
+                Color(red: 0.1, green: 0.1, blue: 0.2)  // Dark navy background
                     .edgesIgnoringSafeArea(.all)
             )
             .navigationTitle("Sign Up")
@@ -105,10 +130,8 @@ struct RegistrationView: View {
             .alert(isPresented: $showingConfirmation) {
                 Alert(
                     title: Text("Registration Successful"),
-                    message: Text("You have been successfully registered."),
-                    dismissButton: .default(Text("OK"), action: {
-                        isRegistered = true
-                    })
+                    message: Text("Verification email sent. Please verify your email."),
+                    dismissButton: .default(Text("OK"))
                 )
             }
         }
@@ -135,13 +158,59 @@ struct RegistrationView: View {
                 return
             }
             
-            self.saveUserProfile(user: user)
+            // Send the verification email
+            user.sendEmailVerification { error in
+                if let error = error {
+                    self.errorMessage = "Failed to send verification email: \(error.localizedDescription)"
+                    self.showingAlert = true
+                    return
+                }
+                
+                print("Verification email sent to \(user.email!)")
+                
+                // Upload the profile image if available
+                if let profileImage = profileImage {
+                    uploadProfileImage(userID: user.uid, image: profileImage) { url in
+                        self.saveUserProfile(user: user, profileImageURL: url?.absoluteString)
+                    }
+                } else {
+                    self.saveUserProfile(user: user, profileImageURL: nil)
+                }
+            }
         }
     }
     
-    private func saveUserProfile(user: FirebaseAuth.User) {
+    private func uploadProfileImage(userID: String, image: UIImage, completion: @escaping (URL?) -> Void) {
+        let storageRef = Storage.storage().reference().child("profile_images/\(userID).jpg")
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            completion(nil)
+            return
+        }
+        
+        storageRef.putData(imageData, metadata: nil) { metadata, error in
+            if let error = error {
+                print("Error uploading image: \(error)")
+                completion(nil)
+                return
+            }
+            
+            storageRef.downloadURL { url, error in
+                if let error = error {
+                    print("Error getting image URL: \(error)")
+                    completion(nil)
+                } else {
+                    completion(url)
+                }
+            }
+        }
+    }
+    
+    private func saveUserProfile(user: FirebaseAuth.User, profileImageURL: String?) {
         let changeRequest = user.createProfileChangeRequest()
-        changeRequest.displayName = username // Set the display name to the entered username
+        changeRequest.displayName = username
+        if let profileImageURL = profileImageURL {
+            changeRequest.photoURL = URL(string: profileImageURL)
+        }
         changeRequest.commitChanges { error in
             if let error = error {
                 self.errorMessage = error.localizedDescription
@@ -150,10 +219,18 @@ struct RegistrationView: View {
             }
             
             let db = Firestore.firestore()
-            db.collection("users").document(user.uid).setData([
+            var data: [String: Any] = [
                 "username": username,
                 "email": email,
-            ]) { error in
+                "isVerified": false,
+                "verificationSentAt": FieldValue.serverTimestamp(),
+            ]
+            
+            if let profileImageURL = profileImageURL {
+                data["profileImageURL"] = profileImageURL
+            }
+            
+            db.collection("users").document(user.uid).setData(data) { error in
                 if let error = error {
                     self.errorMessage = error.localizedDescription
                     self.showingAlert = true
@@ -170,6 +247,6 @@ struct RegistrationView: View {
 struct RegistrationView_Previews: PreviewProvider {
     static var previews: some View {
         RegistrationView()
-            .preferredColorScheme(.light)  // Preview in light mode
+            .preferredColorScheme(.dark)  // Preview in dark mode
     }
 }

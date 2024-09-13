@@ -15,18 +15,20 @@ struct LoginView: View {
     @State private var isLoggingIn = false
     @State private var loginError: String?
     @State private var isLoggedIn = false
+    @State private var rememberMe = false  // Track if "Remember Me" is enabled
     
     var body: some View {
         NavigationStack {
             VStack {
                 Spacer()
                 
-                // App Logo or Title
-                Text("Chatroom")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)  // Automatically adjusts for dark mode
-                    .padding(.bottom, 40)
+                HStack {
+                    Image("logo-no-background")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 300, height: 100)
+                }
+                Spacer()
                 
                 // Email Field
                 HStack {
@@ -34,11 +36,11 @@ struct LoginView: View {
                         .foregroundColor(.gray)
                     TextField("Email Address", text: $email)
                         .padding()
-                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
+                        .foregroundColor(.white)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.systemBackground).opacity(0.2)))  // Adjust background for dark mode
+                    .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
                 .padding(.bottom, 20)
                 .autocapitalization(.none)
@@ -51,25 +53,33 @@ struct LoginView: View {
                         .foregroundColor(.gray)
                     SecureField("Password", text: $password)
                         .padding()
-                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
+                        .foregroundColor(.white)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(UIColor.systemBackground).opacity(0.2)))  // Adjust background for dark mode
+                    .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
                 .padding(.bottom, 20)
+                
+                // "Remember Me" Toggle
+                Toggle(isOn: $rememberMe) {
+                    Text("Remember Me")
+                        .foregroundColor(.white)
+                }
+                .padding(.bottom, 20)
+                .padding(.trailing, 10)
                 
                 // Login Button
                 Button(action: {
                     isLoggingIn = true
-                    dismissKeyboard() // Dismiss keyboard
+                    dismissKeyboard()
                     signIn()
                 }) {
                     if isLoggingIn {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(Color(red: 0.2, green: 0.2, blue: 0.35))
                             .cornerRadius(10)
                     } else {
                         Text("Login")
@@ -77,7 +87,7 @@ struct LoginView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(Color(red: 0.2, green: 0.2, blue: 0.35))
                             .cornerRadius(10)
                     }
                 }
@@ -90,16 +100,16 @@ struct LoginView: View {
                 // Sign-up Link
                 HStack {
                     Text("Don't have an account?")
-                        .foregroundColor(.primary)  // Automatically adjusts for dark mode
+                        .foregroundColor(.white)
                     NavigationLink(destination: RegistrationView()) {
                         Text("Sign up")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.red)
                     }
                 }
                 .padding(.bottom, 40)
             }
             .background(
-                LinearGradient(gradient: Gradient(colors: [Color(red: 0.9, green: 0.9, blue: 1.0), Color(red: 0.8, green: 0.9, blue: 1.0)]), startPoint: .top, endPoint: .bottom)
+                Color(red: 0.1, green: 0.1, blue: 0.2)
                     .edgesIgnoringSafeArea(.all)
             )
             .navigationDestination(isPresented: $isLoggedIn) {
@@ -111,6 +121,9 @@ struct LoginView: View {
                 set: { if !$0 { loginError = nil } }
             )) {
                 Alert(title: Text("Login Error"), message: Text(loginError ?? ""), dismissButton: .default(Text("OK")))
+            }
+            .onAppear {
+                loadRememberedEmail()
             }
         }
     }
@@ -135,9 +148,9 @@ struct LoginView: View {
             } else {
                 print("User signed in successfully")
                 if let user = Auth.auth().currentUser {
-                    // Check if display name is set
+                    saveRememberedEmail()  // Save email if "Remember Me" is enabled
+                    
                     if user.displayName == nil {
-                        // Retrieve username from Firestore
                         let db = Firestore.firestore()
                         db.collection("users").document(user.uid).getDocument { document, error in
                             if let error = error {
@@ -145,7 +158,6 @@ struct LoginView: View {
                                 self.loginError = "Error retrieving user data."
                             } else if let document = document, document.exists {
                                 if let username = document.data()?["username"] as? String {
-                                    // Set the display name to the retrieved username
                                     let changeRequest = user.createProfileChangeRequest()
                                     changeRequest.displayName = username
                                     changeRequest.commitChanges { error in
@@ -170,11 +182,28 @@ struct LoginView: View {
     func dismissKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
+    
+    // Load remembered email from UserDefaults
+    func loadRememberedEmail() {
+        if let savedEmail = UserDefaults.standard.string(forKey: "rememberedEmail") {
+            email = savedEmail
+            rememberMe = true
+        }
+    }
+    
+    // Save email to UserDefaults if "Remember Me" is enabled
+    func saveRememberedEmail() {
+        if rememberMe {
+            UserDefaults.standard.set(email, forKey: "rememberedEmail")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "rememberedEmail")
+        }
+    }
 }
 
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
         LoginView()
-            .preferredColorScheme(.dark)  // Preview in dark mode
+            .preferredColorScheme(.dark)
     }
 }

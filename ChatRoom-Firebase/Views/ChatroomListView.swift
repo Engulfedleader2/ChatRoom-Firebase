@@ -12,68 +12,84 @@ struct ChatroomListView: View {
 
     var body: some View {
         NavigationView {
-            VStack {
-                if viewModel.chatrooms.isEmpty {
-                    // Custom Empty State
-                    VStack {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                            .foregroundColor(.gray)
-                            .padding(.bottom, 20)
-                        Text("No chatrooms available.")
-                            .foregroundColor(.gray)
-                            .italic()
-                    }
-                    .padding()
-                } else {
-                    List {
-                        ForEach(viewModel.chatrooms) { chatroom in
-                            NavigationLink(destination: ChatroomView(chatroomID: chatroom.id)) {
-                                HStack {
-                                    Image(systemName: "message.fill")
-                                        .resizable()
-                                        .frame(width: 40, height: 40)
-                                        .foregroundColor(.blue)
-                                        .padding(.trailing, 10)
-                                    VStack(alignment: .leading) {
-                                        Text(chatroom.name) // Displaying the chatroom name
-                                            .font(.headline)
-                                        Text(chatroom.lastMessage)
-                                            .font(.subheadline)
-                                            .foregroundColor(.gray)
+            ZStack {
+                // Background gradient to match theme
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.1, green: 0.1, blue: 0.2),
+                        Color(red: 0.05, green: 0.05, blue: 0.15)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .edgesIgnoringSafeArea(.all)
+                
+                VStack {
+                    if viewModel.chatrooms.isEmpty {
+                        // Custom Empty State
+                        VStack {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .resizable()
+                                .frame(width: 100, height: 100)
+                                .foregroundColor(.gray)
+                                .padding(.bottom, 20)
+                            Text("No chatrooms available.")
+                                .foregroundColor(.gray)
+                                .italic()
+                        }
+                        .padding()
+                    } else {
+                        List {
+                            ForEach(viewModel.chatrooms) { chatroom in
+                                NavigationLink(destination: ChatroomView(chatroomID: chatroom.id)) {
+                                    HStack {
+                                        Image(systemName: "message.fill")
+                                            .resizable()
+                                            .frame(width: 40, height: 40)
+                                            .foregroundColor(Color(red: 0.3, green: 0.6, blue: 1.0))  // Softer blue
+                                            .padding(.trailing, 10)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text(chatroom.name)
+                                                .font(.headline)
+                                                .foregroundColor(.white)
+                                                .fontWeight(.bold)
+                                            Text(chatroom.lastMessage)
+                                                .font(.subheadline)
+                                                .foregroundColor(.gray)
+                                        }
                                     }
+                                    .padding() // Keep the padding but ensure the background is clear
+                                    .background(Color.clear)  // Make sure the row's background is clear
                                 }
-                                .padding()
-                                .background(RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(UIColor.systemBackground).opacity(0.2)))
-                                .shadow(radius: 1)
+                                .listRowBackground(Color.clear) // Ensure each row has a clear background
                             }
                         }
-                        .listRowSeparator(.hidden) // Hides the default separator
-                    }
-                    .listStyle(PlainListStyle()) // Removes the extra padding on the list
-                }
-            }
-            .navigationTitle("Chatrooms")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Action to add a new chatroom
-                    }) {
-                        Image(systemName: "plus")
+                        .listStyle(PlainListStyle()) // Removes extra padding from the list
+                        .background(Color.clear) // Makes sure the list background is clear
                     }
                 }
-            }
-           
-            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
-                Alert(
-                    title: Text("Error"),
-                    message: Text(viewModel.errorMessage ?? ""),
-                    dismissButton: .default(Text("OK")) {
-                        viewModel.errorMessage = nil
+                .navigationTitle("Gossip Here")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        // Navigate to SettingsView when profile icon is tapped
+                        NavigationLink(destination: SettingsView()) {
+                            Image(systemName: "person.circle.fill") // Profile icon
+                                .resizable()
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(.white)
+                        }
                     }
-                )
+                }
+                .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+                    Alert(
+                        title: Text("Error"),
+                        message: Text(viewModel.errorMessage ?? ""),
+                        dismissButton: .default(Text("OK")) {
+                            viewModel.errorMessage = nil
+                        }
+                    )
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -83,5 +99,6 @@ struct ChatroomListView: View {
 struct ChatroomListView_Previews: PreviewProvider {
     static var previews: some View {
         ChatroomListView()
+            .preferredColorScheme(.dark)  // To preview in dark mode
     }
 }
