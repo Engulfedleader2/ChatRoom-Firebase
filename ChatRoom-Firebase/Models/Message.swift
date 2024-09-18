@@ -13,7 +13,6 @@ struct Message: Identifiable, Codable, Equatable {
     let username: String
     let message: String
     let timestamp: Date
-    let profileImageURL: String?  // URL for the user's profile image
 
     // Equatable conformance
     static func == (lhs: Message, rhs: Message) -> Bool {

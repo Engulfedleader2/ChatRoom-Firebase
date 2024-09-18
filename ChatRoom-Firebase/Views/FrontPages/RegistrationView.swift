@@ -8,19 +8,16 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
-import FirebaseStorage
 
 struct RegistrationView: View {
     
     @State private var email = ""
     @State private var password = ""
     @State private var username = ""
-    @State private var profileImage: UIImage? = nil  // Store selected profile image
     @State private var errorMessage = ""
     @State private var showingAlert = false
     @State private var showingConfirmation = false
     @State private var isRegistered = false
-    @State private var isShowingImagePicker = false
     
     var body: some View {
         NavigationStack {
@@ -33,28 +30,6 @@ struct RegistrationView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .padding(.bottom, 40)
-                
-                // Profile Picture Picker
-                Button(action: {
-                    isShowingImagePicker = true
-                }) {
-                    if let profileImage = profileImage {
-                        Image(uiImage: profileImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                    } else {
-                        Image(systemName: "person.crop.circle")
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                            .foregroundColor(.gray)
-                    }
-                }
-                .padding(.bottom, 20)
-                .sheet(isPresented: $isShowingImagePicker) {
-                    ImagePicker(image: $profileImage)
-                }
                 
                 // Username Field
                 HStack {
@@ -167,50 +142,14 @@ struct RegistrationView: View {
                 }
                 
                 print("Verification email sent to \(user.email!)")
-                
-                // Upload the profile image if available
-                if let profileImage = profileImage {
-                    uploadProfileImage(userID: user.uid, image: profileImage) { url in
-                        self.saveUserProfile(user: user, profileImageURL: url?.absoluteString)
-                    }
-                } else {
-                    self.saveUserProfile(user: user, profileImageURL: nil)
-                }
+                self.saveUserProfile(user: user)
             }
         }
     }
     
-    private func uploadProfileImage(userID: String, image: UIImage, completion: @escaping (URL?) -> Void) {
-        let storageRef = Storage.storage().reference().child("profile_images/\(userID).jpg")
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            completion(nil)
-            return
-        }
-        
-        storageRef.putData(imageData, metadata: nil) { metadata, error in
-            if let error = error {
-                print("Error uploading image: \(error)")
-                completion(nil)
-                return
-            }
-            
-            storageRef.downloadURL { url, error in
-                if let error = error {
-                    print("Error getting image URL: \(error)")
-                    completion(nil)
-                } else {
-                    completion(url)
-                }
-            }
-        }
-    }
-    
-    private func saveUserProfile(user: FirebaseAuth.User, profileImageURL: String?) {
+    private func saveUserProfile(user: FirebaseAuth.User) {
         let changeRequest = user.createProfileChangeRequest()
         changeRequest.displayName = username
-        if let profileImageURL = profileImageURL {
-            changeRequest.photoURL = URL(string: profileImageURL)
-        }
         changeRequest.commitChanges { error in
             if let error = error {
                 self.errorMessage = error.localizedDescription
@@ -219,16 +158,12 @@ struct RegistrationView: View {
             }
             
             let db = Firestore.firestore()
-            var data: [String: Any] = [
+            let data: [String: Any] = [
                 "username": username,
                 "email": email,
                 "isVerified": false,
                 "verificationSentAt": FieldValue.serverTimestamp(),
             ]
-            
-            if let profileImageURL = profileImageURL {
-                data["profileImageURL"] = profileImageURL
-            }
             
             db.collection("users").document(user.uid).setData(data) { error in
                 if let error = error {
@@ -237,7 +172,7 @@ struct RegistrationView: View {
                     return
                 }
 
-                print("User registered successfully with display name!")
+                print("User registered successfully!")
                 self.showingConfirmation = true
             }
         }

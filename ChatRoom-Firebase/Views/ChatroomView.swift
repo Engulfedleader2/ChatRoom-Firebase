@@ -19,9 +19,27 @@ struct ChatroomView: View {
 
     var body: some View {
         VStack {
+            // Show offline status
+            if viewModel.isOffline {
+                HStack {
+                    Image(systemName: "wifi.slash")
+                        .foregroundColor(.white)
+                    Text("You are offline")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .padding()
+                .background(Color.orange)
+                .cornerRadius(10)
+                .shadow(radius: 5)
+                .padding([.horizontal, .top])
+                .transition(.opacity) // Animate appearance/disappearance
+            }
+
             // Top view to show the number of users online
             HStack {
-                Text("Users online: \(numberOfUsersOnline)")
+                Text("Users online: \(viewModel.numberOfUsersOnline)")
                     .font(.subheadline)
                     .foregroundColor(.white)
                 Spacer()
@@ -33,64 +51,7 @@ struct ChatroomView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(viewModel.messages) { message in
-                            HStack(alignment: .center) {
-                                // Profile Picture (Smaller size)
-                                if let profileImageURL = message.profileImageURL {
-                                    AsyncImage(url: URL(string: profileImageURL)) { image in
-                                        image
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 30, height: 30)
-                                            .clipShape(Circle())
-                                    } placeholder: {
-                                        Image(systemName: "person.circle")
-                                            .resizable()
-                                            .frame(width: 30, height: 30)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-
-                                VStack(alignment: .leading) {
-                                    // Username and message
-                                    Text(message.username)
-                                        .font(.footnote)
-                                        .foregroundColor(.gray)
-
-                                    HStack {
-                                        Text(message.message)
-                                            .padding(10)
-                                            .background(Color(UIColor.secondarySystemBackground))
-                                            .cornerRadius(8)
-
-                                        Spacer()
-
-                                        // Conditionally show the timestamp when swiped right
-                                        if showTimestampForMessageID == message.id {
-                                            Text("\(message.timestamp, formatter: dateFormatter)")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                                .transition(.move(edge: .trailing))
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal)
-                                .contentShape(Rectangle())
-                                .gesture(
-                                    DragGesture(minimumDistance: 30)
-                                        .onEnded { value in
-                                            if value.translation.width < 0 {
-                                                withAnimation {
-                                                    showTimestampForMessageID = message.id
-                                                }
-                                            } else {
-                                                withAnimation {
-                                                    showTimestampForMessageID = nil
-                                                }
-                                            }
-                                        }
-                                )
-                            }
-                            .padding(.horizontal)
+                            messageRow(message: message)
                         }
                     }
                     .onChange(of: viewModel.messages) { _ in
@@ -109,9 +70,9 @@ struct ChatroomView: View {
             }
 
             // Show typing indicator if another user is typing
-            if viewModel.otherUserTyping {
+            if !viewModel.otherUserTyping.isEmpty {
                 HStack {
-                    Text("Someone is typing...")
+                    Text(viewModel.otherUserTyping)
                         .font(.caption)
                         .foregroundColor(.gray)
                     Spacer()
@@ -120,40 +81,96 @@ struct ChatroomView: View {
             }
 
             // Message Input
-            HStack {
-                TextField("Type your message...", text: $viewModel.newMessage, onEditingChanged: { isEditing in
-                    if isEditing {
-                        startTyping()
-                    }
-                })
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding(10)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(10)
-                    .frame(minHeight: 30)
-
-                Button(action: {
-                    viewModel.sendMessage()
-                    showTimestampForMessageID = nil
-                }) {
-                    Text("Send")
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(viewModel.newMessage.isEmpty ? Color.gray : Color.blue)
-                        .cornerRadius(10)
-                }
-                .disabled(viewModel.newMessage.isEmpty)
-            }
-            .padding()
-            .background(Color(UIColor.systemGray5))
+            messageInputBar()
         }
         .background(Color(red: 0.1, green: 0.1, blue: 0.2))
         .navigationTitle("Chatroom")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            fetchUsersOnline()
+          //  fetchUsersOnline()
             viewModel.monitorTypingStatus()
         }
+    }
+
+    // Break the message row UI into a separate view to simplify the main body
+    @ViewBuilder
+    private func messageRow(message: Message) -> some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading) {
+                // Username and message
+                Text(message.username)
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+
+                HStack {
+                    Text(message.message)
+                        .padding(10)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(8)
+
+                    Spacer()
+
+                    // Conditionally show the timestamp when swiped right
+                    if showTimestampForMessageID == message.id {
+                        Text("\(message.timestamp, formatter: dateFormatter)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .transition(.move(edge: .trailing))
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 30)
+                    .onEnded { value in
+                        if value.translation.width < 0 {
+                            withAnimation {
+                                showTimestampForMessageID = message.id
+                            }
+                        } else {
+                            withAnimation {
+                                showTimestampForMessageID = nil
+                            }
+                        }
+                    }
+            )
+        }
+        .padding(.horizontal)
+    }
+
+    // Break the message input bar into its own function
+    @ViewBuilder
+    private func messageInputBar() -> some View {
+        HStack {
+            TextField("Type your message...", text: $viewModel.newMessage, onEditingChanged: { isEditing in
+                if isEditing {
+                    startTyping()
+                }
+            })
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(10)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+                .frame(minHeight: 30)
+                .onChange(of: viewModel.newMessage) { _ in
+                    startTyping()
+                }
+
+            Button(action: {
+                viewModel.sendMessage()
+                showTimestampForMessageID = nil
+            }) {
+                Text("Send")
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(viewModel.newMessage.isEmpty ? Color.gray : Color.blue)
+                    .cornerRadius(10)
+            }
+            .disabled(viewModel.newMessage.isEmpty)
+        }
+        .padding()
+        .background(Color(UIColor.systemGray5))
     }
 
     // Date formatter for displaying date and time
@@ -164,12 +181,12 @@ struct ChatroomView: View {
         return formatter
     }
 
-    // Simulated function to fetch the number of users online in the chatroom
-    private func fetchUsersOnline() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            self.numberOfUsersOnline = Int.random(in: 1...50)
-        }
-    }
+//    // Simulated function to fetch the number of users online in the chatroom
+//    private func fetchUsersOnline() {
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+//            self.numberOfUsersOnline = Int.random(in: 1...50)
+//        }
+//    }
 
     // Function to dismiss the keyboard
     private func dismissKeyboard() {
@@ -180,10 +197,10 @@ struct ChatroomView: View {
     private func startTyping() {
         // Invalidate the previous timer if any
         typingTimer?.invalidate()
-        viewModel.updateTypingStatus(isTyping: true)
+        viewModel.startTyping() // Trigger typing status in ViewModel
 
-        // Start a new timer to reset the typing indicator after 2 seconds of inactivity
-        typingTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+        // Start a new timer to reset the typing indicator after 3 seconds of inactivity
+        typingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
             viewModel.updateTypingStatus(isTyping: false)
         }
     }
