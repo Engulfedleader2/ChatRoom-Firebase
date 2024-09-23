@@ -16,6 +16,9 @@ struct LoginView: View {
     @State private var loginError: String?
     @State private var isLoggedIn = false
     @State private var rememberMe = false  // Track if "Remember Me" is enabled
+    @State private var isShowingPasswordResetAlert = false  // Track password reset alert
+    
+    @State private var showEmailNotVerifiedAlert = false
     
     var body: some View {
         NavigationStack {
@@ -36,7 +39,7 @@ struct LoginView: View {
                         .foregroundColor(.gray)
                     TextField("Email Address", text: $email)
                         .padding()
-                        .foregroundColor(.white)
+                        .foregroundColor(.red)
                 }
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10)
@@ -59,6 +62,19 @@ struct LoginView: View {
                 .background(RoundedRectangle(cornerRadius: 10)
                     .fill(Color(UIColor.systemGray5)))
                 .shadow(radius: 2)
+                .padding(.bottom, 5)
+                
+                // Forgot Password Link
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        sendPasswordReset()
+                    }) {
+                        Text("Forgot my password?")
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                    }
+                }
                 .padding(.bottom, 20)
                 
                 // "Remember Me" Toggle
@@ -122,6 +138,20 @@ struct LoginView: View {
             )) {
                 Alert(title: Text("Login Error"), message: Text(loginError ?? ""), dismissButton: .default(Text("OK")))
             }
+            .alert(isPresented: $isShowingPasswordResetAlert) {
+                Alert(
+                    title: Text("Password Reset"),
+                    message: Text("If an account with this email exists, a password reset link will be sent."),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
+            .alert(isPresented: $showEmailNotVerifiedAlert) {
+                Alert(
+                    title: Text("Email Not Verified"),
+                    message: Text("Please verify your email before logging in."),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
             .onAppear {
                 loadRememberedEmail()
             }
@@ -150,29 +180,41 @@ struct LoginView: View {
                 if let user = Auth.auth().currentUser {
                     saveRememberedEmail()  // Save email if "Remember Me" is enabled
                     
-                    if user.displayName == nil {
-                        let db = Firestore.firestore()
-                        db.collection("users").document(user.uid).getDocument { document, error in
-                            if let error = error {
-                                print("Error retrieving user data: \(error)")
-                                self.loginError = "Error retrieving user data."
-                            } else if let document = document, document.exists {
-                                if let username = document.data()?["username"] as? String {
-                                    let changeRequest = user.createProfileChangeRequest()
-                                    changeRequest.displayName = username
-                                    changeRequest.commitChanges { error in
-                                        if let error = error {
-                                            print("Error setting display name: \(error)")
-                                        } else {
-                                            print("Display name set successfully to \(username)")
+                    // Check if the email is verified
+                    if user.isEmailVerified {
+                        if user.displayName == nil {
+                            let db = Firestore.firestore()
+                            db.collection("users").document(user.uid).getDocument { document, error in
+                                if let error = error {
+                                    print("Error retrieving user data: \(error)")
+                                    self.loginError = "Error retrieving user data."
+                                } else if let document = document, document.exists {
+                                    if let username = document.data()?["username"] as? String {
+                                        let changeRequest = user.createProfileChangeRequest()
+                                        changeRequest.displayName = username
+                                        changeRequest.commitChanges { error in
+                                            if let error = error {
+                                                print("Error setting display name: \(error)")
+                                            } else {
+                                                print("Display name set successfully to \(username)")
+                                            }
                                         }
                                     }
                                 }
+                                isLoggedIn = true
                             }
+                        } else {
                             isLoggedIn = true
                         }
                     } else {
-                        isLoggedIn = true
+                        // Handle signOut call safely
+                        do {
+                            try Auth.auth().signOut()
+                            showEmailNotVerifiedAlert = true // Show alert if not verified
+                        } catch let signOutError as NSError {
+                            print("Error signing out: \(signOutError.localizedDescription)")
+                            loginError = "Error signing out. Please try again."
+                        }
                     }
                 }
             }
@@ -197,6 +239,22 @@ struct LoginView: View {
             UserDefaults.standard.set(email, forKey: "rememberedEmail")
         } else {
             UserDefaults.standard.removeObject(forKey: "rememberedEmail")
+        }
+    }
+    
+    // Function to send password reset email
+    func sendPasswordReset() {
+        guard !email.isEmpty else {
+            loginError = "Please enter your email address to reset the password."
+            return
+        }
+        
+        Auth.auth().sendPasswordReset(withEmail: email) { error in
+            if let error = error {
+                loginError = error.localizedDescription
+            } else {
+                isShowingPasswordResetAlert = true
+            }
         }
     }
 }
